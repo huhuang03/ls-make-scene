@@ -1,0 +1,1 @@
+The web is write in react, but why it can service by django
