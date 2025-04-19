@@ -1,0 +1,8 @@
+* web
+** nx run labelstudio:serve:development
+
+run apps/labelstudio/package.json's config, so run the @nx/webpack:dev-server, so 
+8080 is the web port
+   
+* django
+python label_studio/manage.py runserver
