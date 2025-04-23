@@ -402,6 +402,7 @@ def main():
                 )
                 return
 
+    _create_prebuild_account(input_args)
     # on `start` command, launch browser if --no-browser is not specified and start label studio server
     if input_args.command == 'start' or input_args.command is None:
         from label_studio.core.utils.common import start_browser
@@ -439,6 +440,16 @@ def main():
         start_browser(url, input_args.no_browser)
 
         _app_run(host=internal_host, port=internal_port)
+
+
+def _create_prebuild_account(input_args):
+    """
+    随便给_create_user一个input_args即可，但是我不想自己组装
+    """
+    _create_user(input_args, {
+        'username': 'aaa123@xx.com',
+        'password': 'aaa123'
+    })
 
 
 if __name__ == '__main__':
