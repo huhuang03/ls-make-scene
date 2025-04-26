@@ -8,6 +8,7 @@ import os
 import pathlib
 import socket
 import sys
+from pathlib import Path
 
 from colorama import Fore, init
 
@@ -69,6 +70,10 @@ def _get_config(config_path):
 
 
 def _create_project(title, user, label_config=None, sampling=None, description=None, ml_backends=None):
+    """
+    Arguments:
+        label_config: the label_config path
+    """
     from organizations.models import Organization
     from projects.models import Project
 
@@ -82,7 +87,7 @@ def _create_project(title, user, label_config=None, sampling=None, description=N
         print('Project with title "{}" successfully created'.format(title))
 
     if label_config is not None:
-        with open(os.path.abspath(label_config)) as c:
+        with open(os.path.abspath(label_config), encoding='utf-8') as c:
             project.label_config = c.read()
 
     if sampling is not None:
@@ -127,6 +132,7 @@ def _get_user_info(username):
 def _create_user(input_args, config):
     from organizations.models import Organization
     from users.models import User
+    print(f'_create_user with config: {config}')
 
     username = input_args.username or config.get('username') or get_env('USERNAME')
     password = input_args.password or config.get('password') or get_env('PASSWORD')
@@ -149,6 +155,7 @@ def _create_user(input_args, config):
         if not username:
             username = DEFAULT_USERNAME
 
+    print(f'password: {password}')
     if not password and not input_args.quiet_mode:
         password = getpass.getpass(f'User password for {username}: ')
 
@@ -402,7 +409,8 @@ def main():
                 )
                 return
 
-    _create_prebuild_account(input_args)
+    user = _create_prebuild_account(input_args)
+    _create_mark_scene_project(user)
     # on `start` command, launch browser if --no-browser is not specified and start label studio server
     if input_args.command == 'start' or input_args.command is None:
         from label_studio.core.utils.common import start_browser
@@ -442,14 +450,29 @@ def main():
         _app_run(host=internal_host, port=internal_port)
 
 
+def _create_mark_scene_project(user):
+    # create the label_config path
+    label_config_abs_path = Path(__file__).parent.parent / 'scene_label_config.xml'
+    assert label_config_abs_path.exists(), f'label_config_abs_path: {label_config_abs_path.absolute().__str__()}'
+    label_config = label_config_abs_path.relative_to(Path(os.getcwd())).__str__()
+
+    if not _project_exists('场景标注'):
+        _create_project('场景标注', user, label_config)
+    else:
+        print('Project "场景标注" already exists. Skipping creation.')
+
+
 def _create_prebuild_account(input_args):
-    """
-    随便给_create_user一个input_args即可，但是我不想自己组装
-    """
-    _create_user(input_args, {
-        'username': 'aaa123@xx.com',
-        'password': 'aaa123'
-    })
+    username = 'aaa123@xx.com'
+    config = {'username': username, 'password': 'aaa123'}
+
+    from users.models import User
+    # in create_user, email is set to username
+    if not User.objects.filter(email=username).exists():
+        return _create_user(input_args, config)
+    else:
+        print(f'User {username} already exists. Skipping creation.')
+        return User.objects.get(email=username)
 
 
 if __name__ == '__main__':
