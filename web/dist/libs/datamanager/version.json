@@ -1,6 +1,6 @@
 {
-  "message": "feat: OPTIC-1938: Proxy for storages when presigned urls are off (#7354)",
-  "commit": "b560a3fb14675bb12dc68c416fa4e9b3556938f1",
-  "date": "2025-04-20T09:50:10.000Z",
+  "message": "fix: LEAP-2051: Don't allow to resize spans in readonly mode (#7422)",
+  "commit": "b45567246037545e55d132efb8294b86e99e4582",
+  "date": "2025-04-25T16:34:33.000Z",
   "branch": "develop"
 }
