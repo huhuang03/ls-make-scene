@@ -1,0 +1,12 @@
+* User api
+User.objects.create_user(email=username, password=password)
+
+* Project api
+project = Project.objects.filter(title=title).first()
+Project.objects.create(title=title, created_by=user, organization=org)
+
+* Org api
+org = Organization.objects.first()
+org.add_user(user)
+
+* import task

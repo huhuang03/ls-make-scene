@@ -754,3 +754,11 @@ class PreparedTaskManager(models.Manager):
 class TaskManager(models.Manager):
     def for_user(self, user):
         return self.filter(project__organization=user.active_organization)
+
+    def add_tasks(self, datas):
+        from tasks.models import Task
+        tasks = []
+        for data in datas:
+            task = Task(data = data)
+
+        pass

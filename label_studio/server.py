@@ -12,6 +12,8 @@ from pathlib import Path
 
 from colorama import Fore, init
 
+from label_studio.scene_mark.config import MARK_SCENE_PROJECT_NAME
+
 if sys.platform == 'win32':
     init(convert=True)
 
@@ -23,6 +25,10 @@ from django.db.migrations.executor import MigrationExecutor
 
 from label_studio.core.argparser import parse_input_args
 from label_studio.core.utils.params import get_env
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from label_studio.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
@@ -274,10 +280,13 @@ def _get_free_port(port, debug):
     return port
 
 
-def _project_exists(project_name):
+def find_project_by_name(project_name) -> Optional['Project']:
     from projects.models import Project
+    return Project.objects.filter(title=project_name)
 
-    return Project.objects.filter(title=project_name).exists()
+
+def _project_exists(project_name) -> bool:
+    return not not find_project_by_name(project_name)
 
 
 def main():
@@ -412,7 +421,9 @@ def main():
                 return
 
     user = _create_prebuild_account(input_args)
-    _create_mark_scene_project(user)
+    p = _create_mark_scene_project(user)
+    _sync_images_to_task(p)
+    exit(1)
     # on `start` command, launch browser if --no-browser is not specified and start label studio server
     if input_args.command == 'start' or input_args.command is None:
         from label_studio.core.utils.common import start_browser
@@ -452,16 +463,36 @@ def main():
         _app_run(host=internal_host, port=internal_port)
 
 
+def _sync_images_to_task(project: 'Project'):
+    from projects.models import Task
+    from img_collector import get_session, Image
+    from .scene_mark.util import get_img_db_path, get_meta_content_key_from_task, image_to_data
+    from .scene_mark.config import META_CONTENT_KEY
+    session = get_session(get_img_db_path())
+    all_src_imgs = session.query(Image).all()
+    print(f'project.id: {project.id}')
+    all_tasks = Task.objects.filter(project=project)
+    for img in all_src_imgs:
+        found = any(get_meta_content_key_from_task(task) == img.content_key for task in all_tasks)
+        if found:
+            continue
+        task = Task(meta={META_CONTENT_KEY: img.content_key}, data=image_to_data(img), project_id=project.id)
+        print(f'task: {task}, data: {image_to_data(img)}')
+        # print(f'all_imgs: {all_src_imgs}')
+
+
 def _create_mark_scene_project(user):
     # create the label_config path
     label_config_abs_path = Path(__file__).parent.parent / 'scene_label_config.xml'
     assert label_config_abs_path.exists(), f'label_config_abs_path: {label_config_abs_path.absolute().__str__()}'
     label_config = label_config_abs_path.relative_to(Path(os.getcwd())).__str__()
 
-    if not _project_exists('场景标注'):
-        _create_project('场景标注', user, label_config)
+    p = find_project_by_name(MARK_SCENE_PROJECT_NAME)
+    if p is None:
+        print(f'Project "{MARK_SCENE_PROJECT_NAME}" already exists. Skipping creation.')
+        return p
     else:
-        print('Project "场景标注" already exists. Skipping creation.')
+        return _create_project(MARK_SCENE_PROJECT_NAME, user, label_config)
 
 
 def _create_prebuild_account(input_args):
