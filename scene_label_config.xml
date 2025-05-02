@@ -1,6 +1,7 @@
 <View>
     <Image name="image" value="$image"/>
     <Choices name="scene" toName="image">
+        <Choice value="跳过"/>
         <Choice value="长安"/>
         <Choice value="建邺"/>
         <Choice value="长寿"/>

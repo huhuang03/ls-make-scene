@@ -25,7 +25,7 @@ from django.db.migrations.executor import MigrationExecutor
 
 from label_studio.core.argparser import parse_input_args
 from label_studio.core.utils.params import get_env
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, List
 
 if TYPE_CHECKING:
     from label_studio.projects.models import Project
@@ -423,7 +423,7 @@ def main():
     user = _create_prebuild_account(input_args)
     p = _create_mark_scene_project(user)
     _sync_images_to_task(p)
-    exit(1)
+    # exit(1)
     # on `start` command, launch browser if --no-browser is not specified and start label studio server
     if input_args.command == 'start' or input_args.command is None:
         from label_studio.core.utils.common import start_browser
@@ -469,16 +469,19 @@ def _sync_images_to_task(project: 'Project'):
     from .scene_mark.util import get_img_db_path, get_meta_content_key_from_task, image_to_data
     from .scene_mark.config import META_CONTENT_KEY
     session = get_session(get_img_db_path())
-    all_src_imgs = session.query(Image).all()
+    # noinspection PyTypeChecker
+    all_src_imgs: List[Image] = session.query(Image).all()
     print(f'project.id: {project.id}')
     all_tasks = Task.objects.filter(project=project)
+    need_insert: List[Task] = []
     for img in all_src_imgs:
         found = any(get_meta_content_key_from_task(task) == img.content_key for task in all_tasks)
         if found:
             continue
-        task = Task(meta={META_CONTENT_KEY: img.content_key}, data=image_to_data(img), project_id=project.id)
+        task = Task(meta={META_CONTENT_KEY: img.content_key}, data=image_to_data(img), project=project)
+        need_insert.append(task)
         print(f'task: {task}, data: {image_to_data(img)}')
-        # print(f'all_imgs: {all_src_imgs}')
+    Task.objects.bulk_create(need_insert)
 
 
 def _create_mark_scene_project(user):
